@@ -15,7 +15,7 @@ def get_information_value(probability: float) -> float:
         probability (float): Ration between new_word_list and old_word_list
 
     Returns:
-        float: bit value of word
+        float: probabilty of word
     """
     if not probability:
         return 0
@@ -26,7 +26,7 @@ def get_regex_from_word_pattern(word: str, pattern: List[int]) -> str:
     """Transform word and its pattern to regex expression
 
     Args:
-        word (str): Chosen word
+        word (str): Word that player write
         pattern (List[int]): list with colors of letter:
             -1 is gray
             0 is yellow/amber
@@ -63,6 +63,19 @@ def get_regex_from_word_pattern(word: str, pattern: List[int]) -> str:
 def get_probabilty_of_word_pattern(
     word: str, regex_expression: str, old_word_list: List[str]
 ) -> float:
+    """Calculate percentage of words that satisfy regex expression to all current words in list
+
+    Args:
+        word (str): Word that player write
+        regex_expression (str): regex expression that was created by pattern
+        old_word_list (List[str]): Current words list of possible answers
+
+    Raises:
+        Exception: if word list is empty
+
+    Returns:
+        float: probality or percentage of words that satisfy regex expression
+    """
     if not old_word_list:
         raise Exception("List with old words shouldn't be empty")
     regex_pattern = re.compile(regex_expression)
@@ -74,6 +87,15 @@ def get_probabilty_of_word_pattern(
 
 
 def get_entropy_of_word(word: str, old_word_list: List[str]) -> float:
+    """Calculate entropy of word for current word list
+
+    Args:
+        word (str): Word that player write
+        old_word_list (List[str]):  Current words list of possible answers
+
+    Returns:
+        float: Entropy of word for current word list
+    """
     word = word.upper()
     possible_colors = [
         LETTER_NOT_IN_WORD,
