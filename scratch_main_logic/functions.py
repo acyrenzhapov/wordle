@@ -1,45 +1,39 @@
 from typing import List
 from math import log2
-
+import itertools
+import re
 
 LETTER_NOT_IN_WORD = -1
 LETTER_IN_WRONG_POSITION = 0
 LETTER_IN_RIGHT_POSITION = 1
 
 
-def get_bit_value(new_word_list: List[str], old_word_list: List[str]) -> float:
+def get_information_value(probability: float) -> float:
     """Gives information on how many bits of information a word holds
 
     Args:
-        new_word_list (List[str]): list of words that satisfy pattern of new step
-        old_word_list (List[str]): list of words from previous step of game
-
-    Raises:
-        Exception: new_word_list shouldn't be empty
-        Exception: old_word_list shouldn't be empty
+        probability (float): Ration between new_word_list and old_word_list
 
     Returns:
         float: bit value of word
     """
-    if not new_word_list:
-        raise Exception("List with reduced words shouldn't be empty")
-    if not old_word_list:
-        raise Exception("List with old words shouldn't be empty")
-    return log2(len(old_word_list) / len(new_word_list))
+    if not probability:
+        return 0
+    return log2(1 / probability)
 
 
-def from_word_pattern_to_regex(word: str, pattern: List[int]) -> str:
-    """Transform word and its pattern to regex expression 
+def get_regex_from_word_pattern(word: str, pattern: List[int]) -> str:
+    """Transform word and its pattern to regex expression
 
     Args:
         word (str): Chosen word
         pattern (List[int]): list with colors of letter:
             -1 is gray
             0 is yellow/amber
-            1 is green 
+            1 is green
 
     Returns:
-        str: regex expression that describes possible words of chosen word and its pattern 
+        str: regex expression that describes possible words of chosen word and its pattern
     """
     regex_expression: str = r""
     regex_except_list: List[str] = []
@@ -52,6 +46,9 @@ def from_word_pattern_to_regex(word: str, pattern: List[int]) -> str:
             regex_letters_list[index].append(letter)
         elif letter_status == LETTER_IN_RIGHT_POSITION:
             regex_letters_list[index] = letter
+    for item in regex_letters_list:
+        if isinstance(item, list) and (len(item) > 0):
+            regex_expression += f"(?=.*{item[0]})"
 
     for index in range(len(pattern)):
         if isinstance(regex_letters_list[index], list):
@@ -63,6 +60,34 @@ def from_word_pattern_to_regex(word: str, pattern: List[int]) -> str:
     return regex_expression
 
 
-print(from_word_pattern_to_regex("STORE", [-1, 0, -1, 1, 0]))
-print(log2((3**5)))
-print(3 ^ 5)
+def get_probabilty_of_word_pattern(
+    word: str, regex_expression: str, old_word_list: List[str]
+) -> float:
+    if not old_word_list:
+        raise Exception("List with old words shouldn't be empty")
+    regex_pattern = re.compile(regex_expression)
+    new_word_list: List[str] = []
+    for word in old_word_list:
+        if regex_pattern.search(word) is not None:
+            new_word_list.append(word)
+    return len(new_word_list) / len(old_word_list)
+
+
+def get_entropy_of_word(word: str, old_word_list: List[str]) -> float:
+    word = word.upper()
+    possible_colors = [
+        LETTER_NOT_IN_WORD,
+        LETTER_IN_WRONG_POSITION,
+        LETTER_IN_RIGHT_POSITION,
+    ]
+    entropy_value = 0
+    for index, pattern in enumerate(
+        itertools.product(possible_colors, repeat=len(word))
+    ):
+        pattern = list(pattern)
+        regex_expression = get_regex_from_word_pattern(word=word, pattern=pattern)
+        probability = get_probabilty_of_word_pattern(
+            word, regex_expression, old_word_list
+        )
+        entropy_value += probability * get_information_value(probability)
+    return entropy_value
