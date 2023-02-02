@@ -1,11 +1,27 @@
-from typing import List
+from typing import List, Tuple, Iterator
 from math import log2
 import itertools
 import re
+from functools import wraps
+import time
 
 LETTER_NOT_IN_WORD = -1
 LETTER_IN_WRONG_POSITION = 0
 LETTER_IN_RIGHT_POSITION = 1
+
+
+def timeit(func):
+    @wraps(func)
+    def timeit_wrapper(*args, **kwargs):
+        start_time = time.perf_counter()
+        result = func(*args, **kwargs)
+        end_time = time.perf_counter()
+        total_time = end_time - start_time
+        # first item in the args, ie `args[0]` is `self`
+        print(f"Function {func.__name__} Took {total_time:.4f} seconds")
+        return result
+
+    return timeit_wrapper
 
 
 def get_information_value(probability: float) -> float:
@@ -22,12 +38,12 @@ def get_information_value(probability: float) -> float:
     return log2(1 / probability)
 
 
-def get_regex_from_word_pattern(word: str, pattern: List[int]) -> str:
+def get_regex_from_word_pattern(word: str, pattern: Tuple[int]) -> str:
     """Transform word and its pattern to regex expression
 
     Args:
         word (str): Word that player write
-        pattern (List[int]): list with colors of letter:
+        pattern (Tuple[int]): tuple with colors of letter:
             -1 is gray
             0 is yellow/amber
             1 is green
@@ -79,11 +95,25 @@ def get_probabilty_of_word_pattern(
     if not old_word_list:
         raise Exception("List with old words shouldn't be empty")
     regex_pattern = re.compile(regex_expression)
-    new_word_list: List[str] = []
-    for word in old_word_list:
-        if regex_pattern.search(word) is not None:
-            new_word_list.append(word)
+    new_word_list = list(filter(regex_pattern.match, old_word_list))
     return len(new_word_list) / len(old_word_list)
+
+
+def get_word_patterns(word_length: int = 5) -> Iterator[Tuple[int]]:
+    """Return all possible word patterns
+
+    Args:
+        word_length (int, optional): Length of word in current game difficulty. Defaults to 5.
+
+    Yields:
+        Iterator[Tuple[int]]: words patterns
+    """
+    possible_colors = [
+        LETTER_NOT_IN_WORD,
+        LETTER_IN_WRONG_POSITION,
+        LETTER_IN_RIGHT_POSITION,
+    ]
+    return itertools.product(possible_colors, repeat=word_length)
 
 
 def get_entropy_of_word(word: str, old_word_list: List[str]) -> float:
@@ -97,16 +127,8 @@ def get_entropy_of_word(word: str, old_word_list: List[str]) -> float:
         float: Entropy of word for current word list
     """
     word = word.upper()
-    possible_colors = [
-        LETTER_NOT_IN_WORD,
-        LETTER_IN_WRONG_POSITION,
-        LETTER_IN_RIGHT_POSITION,
-    ]
     entropy_value = 0
-    for index, pattern in enumerate(
-        itertools.product(possible_colors, repeat=len(word))
-    ):
-        pattern = list(pattern)
+    for pattern in get_word_patterns(len(word)):
         regex_expression = get_regex_from_word_pattern(word=word, pattern=pattern)
         probability = get_probabilty_of_word_pattern(
             word, regex_expression, old_word_list
